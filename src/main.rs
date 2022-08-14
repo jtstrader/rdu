@@ -1,9 +1,6 @@
-use std::path::PathBuf;
-
 use clap::Parser;
-
-use rdu::get_paths;
-use rdu::normalize_path_arg;
+use rdu::{log_disk_usage, normalize_path_arg};
+use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
 #[clap(version, about, long_about = None)]
@@ -14,20 +11,21 @@ struct Args {
 
     #[clap(short = 'd', long, value_parser)]
     /// The maximum recursive depth to show file sizes of.
-    max_depth: Option<u8>,
+    max_depth: Option<u16>,
+
+    #[clap(short, value_parser)]
+    /// Make output human readable
+    human_readable: bool,
 }
 
 fn main() {
     let cli = Args::parse();
-    let root = match cli.path {
-        Some(s) => s,
-        None => String::from("./"),
+    let depth = cli.max_depth.unwrap_or(0);
+    let human_readable = cli.human_readable;
+    let root_path = match cli.path {
+        Some(s) => PathBuf::from(&normalize_path_arg(&s)),
+        None => PathBuf::from(&normalize_path_arg("./")),
     };
 
-    let paths: Vec<PathBuf> = match get_paths(&normalize_path_arg(&root)) {
-        Ok(vec) => vec,
-        Err(_e) => vec![],
-    };
-
-    println!("{:#?}", paths);
+    log_disk_usage(root_path, depth, human_readable);
 }
