@@ -120,9 +120,33 @@ fn get_file_size(file_path: PathBuf, depth: &Depth) -> Result<PathSizeMetadata, 
     }
 }
 
-/// Get total number of digits in a number
-fn get_num_digits(size: u64) -> usize {
-    (size as f64).log(10.0).ceil() as usize
+/// Get total number of digits in a number using the digit count trait.
+trait DigitCount {
+    fn get_num_digits(&self) -> usize;
+}
+
+impl DigitCount for f64 {
+    /// Count the number of digits in an f64 number, not including past the decimal.
+    /// Assume that a safe conversion here between u64 and f64 can occur without noticeable loss,
+    /// due to the immense size of u64 and f64 types when regarding file sizes.
+    fn get_num_digits(&self) -> usize {
+        if *self < 2_f64 {
+            1
+        } else {
+            ((*self as u64) as f64).log(10_f64).ceil() as usize
+        }
+    }
+}
+
+impl DigitCount for u64 {
+    /// Count the number of digits in a u64 number.
+    fn get_num_digits(&self) -> usize {
+        if *self < 2 {
+            1
+        } else {
+            (*self as f64).log(10_f64).ceil() as usize
+        }
+    }
 }
 
 /// Print function in bytes format
@@ -130,8 +154,8 @@ fn print_bytes(data: Vec<PathSizeMetadata>) {
     // first pass to determine max value in dataset to adjust width of left column
     let max: u64 = data.iter().max_by_key(|md| md.size).unwrap().size;
 
-    // get number of digits of character
-    let max_digits: usize = get_num_digits(max);
+    // get number of digits
+    let max_digits: usize = max.get_num_digits();
 
     for item in data {
         println!("{:<max_digits$}  {}", item.size, item.path.display());
@@ -147,15 +171,22 @@ fn print_readable(data: Vec<PathSizeMetadata>) {
     for item in data {
         // truncate off digits until below the 4 digit count
         let mut truncate_count: u8 = 0;
-        let mut size = item.size;
-        while get_num_digits(size) >= 4 {
-            size /= 1024;
+        let mut size: f64 = item.size as f64;
+        while size >= 1024_f64 {
+            size /= 1024_f64;
             truncate_count += 1;
         }
 
+        // if the count of digits is equal to 1 for the size, add a
+        // single decimal point, otherwise truncate all decimals
         println!(
             "{:<max_digits$}  {}",
-            format!("{}{}", size, units.get(&truncate_count).unwrap_or(&'?')),
+            format!(
+                "{:.2$}{}",
+                size,
+                units.get(&truncate_count).unwrap_or(&'?'),
+                (size < 9.95) as usize
+            ),
             item.path.display()
         );
     }
@@ -163,12 +194,15 @@ fn print_readable(data: Vec<PathSizeMetadata>) {
 
 /// Log disk usage for a given depth and path. The de
 pub fn log_disk_usage(path: PathBuf, depth: u16, human_readable: bool, sort: bool) {
-    let mut res: Vec<PathSizeMetadata> = get_dir_data(path, Depth::None)
-        .unwrap()
-        .0
-        .into_iter()
-        .filter(|data| data.depth <= depth)
-        .collect();
+    let mut res: Vec<PathSizeMetadata> = match path.is_dir() {
+        true => get_dir_data(path, Depth::None)
+            .unwrap()
+            .0
+            .into_iter()
+            .filter(|data| data.depth <= depth)
+            .collect(),
+        false => vec![get_file_size(path, &Depth::Depth(0)).unwrap()],
+    };
 
     if sort {
         res.sort_by_key(|d| d.size);
