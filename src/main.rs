@@ -16,16 +16,21 @@ struct Args {
     #[clap(short, value_parser)]
     /// Make output human readable
     human_readable: bool,
+
+    #[clap(short, value_parser)]
+    /// Sort the output least to greatest
+    sort: bool,
 }
 
 fn main() {
     let cli = Args::parse();
     let depth = cli.max_depth.unwrap_or(0);
     let human_readable = cli.human_readable;
+    let sort = cli.sort;
     let root_path = match cli.path {
         Some(s) => PathBuf::from(&normalize_path_arg(&s)),
         None => PathBuf::from(&normalize_path_arg("./")),
     };
 
-    log_disk_usage(root_path, depth, human_readable);
+    log_disk_usage(root_path, depth, human_readable, sort);
 }

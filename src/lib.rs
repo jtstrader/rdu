@@ -149,7 +149,7 @@ fn print_readable(data: Vec<PathSizeMetadata>) {
         let mut truncate_count: u8 = 0;
         let mut size = item.size;
         while get_num_digits(size) >= 4 {
-            size /= 1000;
+            size /= 1024;
             truncate_count += 1;
         }
 
@@ -162,13 +162,17 @@ fn print_readable(data: Vec<PathSizeMetadata>) {
 }
 
 /// Log disk usage for a given depth and path. The de
-pub fn log_disk_usage(path: PathBuf, depth: u16, human_readable: bool) {
-    let res: Vec<PathSizeMetadata> = get_dir_data(path, Depth::None)
+pub fn log_disk_usage(path: PathBuf, depth: u16, human_readable: bool, sort: bool) {
+    let mut res: Vec<PathSizeMetadata> = get_dir_data(path, Depth::None)
         .unwrap()
         .0
         .into_iter()
         .filter(|data| data.depth <= depth)
         .collect();
+
+    if sort {
+        res.sort_by_key(|d| d.size);
+    }
 
     if human_readable {
         print_readable(res)
