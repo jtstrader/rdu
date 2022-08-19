@@ -192,7 +192,7 @@ fn print_readable(data: Vec<PathSizeMetadata>) {
     }
 }
 
-/// Log disk usage for a given depth and path. The de
+/// Log disk usage for a given depth and path.
 pub fn log_disk_usage(path: PathBuf, depth: u16, human_readable: bool, sort: bool) {
     let mut res: Vec<PathSizeMetadata> = match path.is_dir() {
         true => get_dir_data(path, Depth::None)
