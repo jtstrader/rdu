@@ -9,3 +9,10 @@ edition = "2021"
 
 [dependencies]
 clap = { version = "3.2.16", features = ["derive"] }
+
+[dev-dependencies]
+criterion = "0.3.6"
+
+[[bench]]
+name = "bench"
+harness = false

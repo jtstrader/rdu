@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 use std::{fs, path::PathBuf};
 
-struct PathSizeMetadata {
+pub struct PathSizeMetadata {
     path: PathBuf,
     size: u64,
     depth: u16,
 }
 
-enum Depth {
+pub enum Depth {
     None,
     Depth(u16),
 }
@@ -192,9 +192,11 @@ fn print_readable(data: Vec<PathSizeMetadata>) {
     }
 }
 
-/// Log disk usage for a given depth and path.
-pub fn log_disk_usage(path: PathBuf, depth: u16, human_readable: bool, sort: bool) {
-    let mut res: Vec<PathSizeMetadata> = match path.is_dir() {
+/// Get the current disk usage of a provided path. If the provided path is a path to a file, return the file size.
+/// If the provided path is the path to a directory, return the vector of all subdirectory and file sizes within,
+/// and filter out unnecessary data based on the depth.
+pub fn get_disk_usage(path: PathBuf, depth: u16) -> Vec<PathSizeMetadata> {
+    match path.is_dir() {
         true => get_dir_data(path, Depth::None)
             .unwrap()
             .0
@@ -202,7 +204,12 @@ pub fn log_disk_usage(path: PathBuf, depth: u16, human_readable: bool, sort: boo
             .filter(|data| data.depth <= depth)
             .collect(),
         false => vec![get_file_size(path, &Depth::Depth(0)).unwrap()],
-    };
+    }
+}
+
+/// Log disk usage for a given depth and path.
+pub fn log_disk_usage(path: PathBuf, depth: u16, human_readable: bool, sort: bool) {
+    let mut res: Vec<PathSizeMetadata> = get_disk_usage(path, depth);
 
     if sort {
         res.sort_by_key(|d| d.size);
